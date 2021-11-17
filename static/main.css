@@ -1,7 +1,39 @@
+* {padding: 0; margin: 0;}
 p {
-  color: red;  
+  color: black;  
+  margin: 0;
+}
+
+input {
+  display: block;
+  margin: 0 0 10px 0;
 }
 
 html {
-  padding: 40px;
+  padding: 10px;
+}
+
+nav {
+  margin-bottom: 20px;
+}
+
+h2 {
+  padding: 0;
+  margin: 0 0 0 10px;
+}
+
+li {
+  padding: 0 0;
+  width: 100px;
+  text-align: center;
+}
+
+li:hover {
+  background-color: #c9cbcc; 
+  border-radius: 5px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: bold;
 }
