@@ -25,21 +25,42 @@ import Common.Route
 -- `prerender` functions.
 
 ------BACKEND-----------
-data Pagina = HomePage | Pet | Agenda | Sobre
 
--- lista :: DomBuilder t m => m ()
--- lista = do
---   elAttr "nav" ("class" =: "navbar navbar-expand-lg navbar-light bg-light") $
---         elAttr "div" ("class" =: "container-fluid") $
---           elAttr "ul" ("class" =: "navbar-nav") $ do             
---             (elAttr "li" ("class" =: "navbar-nav") $ 
---               elAttr "a" ("class" =: "nav-link active" <> "aria-current" =: "page" <> "href" =: "#") $ text "Home")
---             (elAttr "li" ("class" =: "navbar-nav") $ 
---               elAttr "a" ("class" =: "nav-link active" <> "aria-current" =: "page" <> "href" =: "#") $ text "Pet")            
---             (elAttr "li" ("class" =: "navbar-nav") $ 
---               elAttr "a" ("class" =: "nav-link active" <> "aria-current" =: "page" <> "href" =: "#") $ text "Agenda")            
---             (elAttr "li" ("class" =: "navbar-nav") $ 
---               elAttr "a" ("class" =: "nav-link active" <> "aria-current" =: "page" <> "href" =: "#") $ text "Sobre")            
+getPath :: T.Text
+getPath = renderBackendRoute checFullREnc $ BackendRoute_PetRoute :/ ()
+
+nomeRequest :: T.Text -> XhrRequest T.Text
+nomeRequest s = postJson getPath (PetJson s)
+
+pagReq :: ( DomBuilder t m
+          , Prerender js t m
+          ) => m (Event t T.Text)
+pagReq = do   
+    elAttr "p" ("class" =: "title") (text "Nome do pet:") 
+    inpnome <- inputElement def
+    (submitBtn,_) <- el' "button" (text "Inserir")
+    let click = domEvent Click submitBtn
+    let nm = tag (current $ _inputElement_value inpnome) click
+    st <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync (nomeRequest <$> nm))
+    return (fromMaybe "" <$> switchDyn st) 
+    
+paginaInserePet :: ( DomBuilder t m
+       , PostBuild t m
+       , MonadHold t m
+       , Prerender js t m
+       ) => m ()
+paginaInserePet = do
+    st <- pagReq 
+    tx <- holdDyn "" st
+    el "div" (dynText tx)        
+
+------------------------
+
+
+------FRONTEND-----------
+data Pagina = HomePage | Pet | Agenda | Sobre | PetAdd
 
 clickLi :: DomBuilder t m => Pagina -> T.Text -> m (Event t Pagina)
 clickLi p t = do
@@ -61,9 +82,10 @@ currPag :: (DomBuilder t m, MonadHold t m, PostBuild t m, Prerender js0 t m) => 
 currPag p = 
     case p of
          HomePage -> homePage
-         Pet -> petPage
+         Pet -> paginaInserePet--petPage
          Agenda -> agendaPage
          Sobre -> sobrePage
+         PetAdd -> paginaInserePet
          
 mainPag :: (DomBuilder t m, MonadHold t m, PostBuild t m, Prerender js0 t m) => m ()
 mainPag = do
@@ -99,7 +121,7 @@ petPage = do
   el "h3" (text "Pet")
   el "hr" $ blank
   el "div" $ do
-    el "p" (text "Está na página de pet")
+    el "p" (text "Está na página de pet")    
 
 agendaPage :: (DomBuilder t m, PostBuild t m) => m ()
 agendaPage = do
@@ -117,7 +139,7 @@ sobrePage = do
     elAttr "p" ("class" =: "") (text "Bruno Morais")
     elAttr "p" ("class" =: "") (text "Verônica Marques")
     elAttr "p" ("class" =: "title") (text "Projeto:")
-    elAttr "p" ("class" =: "") (text "O projeto tem como objetivo simular o CRUD de Agenda e Pet, com base em um usuário que quer organizar os horários de passeio e consulta de seus pets")    
+    elAttr "p" ("class" =: "") (text "O projeto tem como objetivo simular o CRUD de Agenda e Pet, com base em um usuário que deseja organizar os horários de passeio e consulta de seus pets")    
 
    
 caixas :: (DomBuilder t m, PostBuild t m) => m ()
