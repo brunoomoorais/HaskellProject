@@ -30,6 +30,10 @@ data BackendRoute :: * -> * where
   -- You can define any routes that will be handled specially by the backend here.
   -- i.e. These do not serve the frontend, but do something different, such as serving static files.
   BackendRoute_PetRoute :: BackendRoute ()
+  BackendRoute_AgendaJson :: BackendRoute ()
+  BackendRoute_ClienteJson :: BackendRoute ()
+  BackendRoute_PetJson :: BackendRoute ()
+
 
 data FrontendRoute :: * -> * where
   FrontendRoute_Main :: FrontendRoute ()
@@ -47,7 +51,11 @@ fullRouteEncoder = mkFullRouteEncoder
   (FullRoute_Backend BackendRoute_Missing :/ ())
   (\case
       BackendRoute_Missing -> PathSegment "missing" $ unitEncoder mempty
-      BackendRoute_PetRoute -> PathSegment "pet" $ unitEncoder mempty)
+      BackendRoute_AgendaJson -> PathSegment "agenda" $ unitEncoder mempty
+      BackendRoute_PetRoute -> PathSegment "petz" $ unitEncoder mempty
+      BackendRoute_ClienteJson -> PathSegment "cliente" $ unitEncoder mempty
+      BackendRoute_PetJson  -> PathSegment "pet" $ unitEncoder mempty      
+      )
   (\case
       FrontendRoute_Main -> PathEnd $ unitEncoder mempty)
 

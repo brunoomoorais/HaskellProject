@@ -1,23 +1,24 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeApplications, ScopedTypeVariables #-}
 
 module Frontend where
 
 import Control.Monad
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
 import Language.Javascript.JSaddle (eval, liftJSM)
-import Data.Maybe
+import Control.Monad.Fix
 import Obelisk.Frontend
 import Obelisk.Configs
 import Obelisk.Route
 import Obelisk.Generated.Static
-import Text.Read (readMaybe)
+import Data.Map (Map)
 import Reflex.Dom.Core
-
+import Text.Read
+import Data.Maybe
 import Common.Api
 import Common.Route
+import Data.Aeson
 
 
 -- This runs in a monad that can be run on the client or the server.
@@ -26,41 +27,127 @@ import Common.Route
 
 ------BACKEND-----------
 
-getPath :: T.Text
-getPath = renderBackendRoute checFullREnc $ BackendRoute_PetRoute :/ ()
+getPath :: R BackendRoute -> T.Text
+getPath r = renderBackendRoute checFullREnc r
+
+-- getListReq :: XhrRequest ()
+-- getListReq = xhrRequest "GET" (getPath (BackendRoute_Listar :/ ())) def
+
+sendRequest :: ToJSON a => R BackendRoute -> a -> XhrRequest T.Text
+sendRequest r dados = postJson (getPath r) dados
+
+getPathPet :: T.Text
+getPathPet = renderBackendRoute checFullREnc $ BackendRoute_PetRoute :/ ()
 
 nomeRequest :: T.Text -> XhrRequest T.Text
-nomeRequest s = postJson getPath (PetJson s)
+nomeRequest s = postJson getPathPet (PetJson s)
 
-pagReq :: ( DomBuilder t m
-          , Prerender js t m
-          ) => m (Event t T.Text)
-pagReq = do   
+-- pagReqPet :: ( DomBuilder t m
+--           , Prerender js t m
+--           ) => m (Event t T.Text)
+-- pagReqPet = do
+--     el "h3" (text "Pet - Adicionar")
+--     el "hr" $ blank
+--     elAttr "p" ("class" =: "title") (text "Nome do pet:") 
+--     inpnome <- inputElement def
+--     (submitBtn,_) <- elAttr' "button" ("class"=:"btn btn-primary") (text "Inserir")
+--     let click = domEvent Click submitBtn
+--     let nm = tag (current $ _inputElement_value inpnome) click
+--     st <- prerender
+--         (pure never)
+--         (fmap decodeXhrResponse <$> performRequestAsync (nomeRequest <$> nm))
+--     return (fromMaybe "" <$> switchDyn st) 
+
+pagReqPet' :: ( DomBuilder t m
+           , Prerender js t m
+           ) => m ()
+pagReqPet' = do
+    el "h3" (text "Pet - Adicionar")
+    el "hr" (blank)
+    elAttr "p" ("class" =: "title") (text "Id do cliente:") 
+    id <- numberInputSecond
     elAttr "p" ("class" =: "title") (text "Nome do pet:") 
-    inpnome <- inputElement def
-    (submitBtn,_) <- el' "button" (text "Inserir")
+    nome <- inputElement def
+    elAttr "p" ("class" =: "title") (text "Tipo do pet:") 
+    tipo <- inputElement def
+    let object = fmap (\((i,n),r) -> PetJsonObject 0 i n r) (zipDyn (zipDyn id  (_inputElement_value nome)) (_inputElement_value tipo))
+    (submitBtn,_) <- elAttr' "button" ("class"=:"btn btn-primary") (text "Adicionar")
     let click = domEvent Click submitBtn
-    let nm = tag (current $ _inputElement_value inpnome) click
-    st <- prerender
+    let prodEvt = tag (current object) click
+    _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
         (pure never)
-        (fmap decodeXhrResponse <$> performRequestAsync (nomeRequest <$> nm))
-    return (fromMaybe "" <$> switchDyn st) 
+        (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_PetJson :/ ()) <$> prodEvt))
+    return ()
+
+--let object = fmap (\((c,d),(p, n)) -> AgendaJson 0 c d p n) (zipDyn (zipDyn id  (_inputElement_value date)) (zipDyn preco  (_inputElement_value nomeServico)))
+
+pagReqCliente :: ( DomBuilder t m
+           , Prerender js t m
+           ) => m ()
+pagReqCliente = do
+    el "h3" (text "Cliente - Adicionar")
+    el "hr" (blank)
+    elAttr "p" ("class" =: "title") (text "Nome:") 
+    nome <- inputElement def
+    elAttr "p" ("class" =: "title") (text "Contato:") 
+    contato <- inputElement def
+    let object = fmap (\(n,c) -> ClienteJson 0 n c) (zipDyn (_inputElement_value nome) (_inputElement_value contato))
+    (submitBtn,_) <- elAttr' "button" ("class"=:"btn btn-primary") (text "Adicionar")
+    let click = domEvent Click submitBtn
+    let prodEvt = tag (current object) click
+    _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_ClienteJson :/ ()) <$> prodEvt))
+    return () 
+
+pagReqAgenda :: ( DomBuilder t m
+           , Prerender js t m
+           ) => m ()
+pagReqAgenda = do
+    el "h3" (text "Agenda - Adicionar")
+    el "hr" (blank)
+    elAttr "p" ("class" =: "title") (text "Id do cliente:") 
+    id <- numberInputSecond
+    elAttr "p" ("class" =: "title") (text "Data do serviço:") 
+    date <- inputElement def
+    elAttr "p" ("class" =: "title") (text "Preço:") 
+    preco <- numberInputSecond
+    elAttr "p" ("class" =: "title") (text "Nome do serviço:") 
+    nomeServico <- inputElement def
+    let object = fmap (\((c,d),(p, n)) -> AgendaJson 0 c d p n) (zipDyn (zipDyn id  (_inputElement_value date)) (zipDyn preco  (_inputElement_value nomeServico)))
+    (submitBtn,_) <- elAttr' "button" ("class"=:"btn btn-primary") (text "Adicionar")
+    let click = domEvent Click submitBtn
+    let prodEvt = tag (current object) click
+    _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_AgendaJson :/ ()) <$> prodEvt))
+    return () 
     
-paginaInserePet :: ( DomBuilder t m
-       , PostBuild t m
-       , MonadHold t m
-       , Prerender js t m
-       ) => m ()
-paginaInserePet = do
-    st <- pagReq 
-    tx <- holdDyn "" st
-    el "div" (dynText tx)        
+-- paginaInserePet :: ( DomBuilder t m
+--        , PostBuild t m
+--        , MonadHold t m
+--        , Prerender js t m
+--        ) => m ()
+-- paginaInserePet = do
+--     st <- pagReqPet
+--     tx <- holdDyn "" st
+--     el "div" (dynText tx)
+
+-- paginaInsereCliente :: ( DomBuilder t m
+--        , PostBuild t m
+--        , MonadHold t m
+--        , Prerender js t m
+--        ) => m ()
+-- paginaInsereCliente = do
+--     st <- pagReqCliente
+--     tx <- holdDyn "" st
+--     el "div" (dynText tx)        
 
 ------------------------
 
 
 ------FRONTEND-----------
-data Pagina = HomePage | Pet | Agenda | Sobre | PetAdd
+data Pagina = HomePage | Pet | PetAdd | Agenda | Sobre | Cliente | ClienteAdd | AgendaAdd
 
 clickLi :: DomBuilder t m => Pagina -> T.Text -> m (Event t Pagina)
 clickLi p t = do
@@ -72,20 +159,27 @@ menuLi = do
     evs <- elAttr "div" ("class" =: "container-fluid") $
             elAttr "ul" ("class" =: "navbar-nav") $ do
         p1 <- clickLi HomePage "Home"
-        p2 <- clickLi Pet "Pet"
-        p3 <- clickLi Agenda "Agenda"
-        p4 <- clickLi Sobre "Sobre"
-        return (leftmost [p1,p2,p3,p4])
+        p2 <- clickLi Pet "Pets"
+        p3 <- clickLi Agenda "Agendamentos"
+        p4 <- clickLi Cliente "Clientes"
+        p5 <- clickLi Sobre "Sobre"
+        p6 <- clickLi PetAdd "Pet - Add"        
+        p7 <- clickLi ClienteAdd "Cliente - Add"
+        p8 <- clickLi AgendaAdd "Agenda - Add"        
+        return (leftmost [p1,p2,p3,p4, p5, p6, p7, p8])
     holdDyn HomePage evs    
     
 currPag :: (DomBuilder t m, MonadHold t m, PostBuild t m, Prerender js0 t m) => Pagina -> m ()
 currPag p = 
     case p of
          HomePage -> homePage
-         Pet -> paginaInserePet--petPage
+         Pet -> petPage--petPage
          Agenda -> agendaPage
+         Cliente -> clientePage
          Sobre -> sobrePage
-         PetAdd -> paginaInserePet
+         PetAdd -> pagReqPet'
+         ClienteAdd -> pagReqCliente
+         AgendaAdd -> pagReqAgenda
          
 mainPag :: (DomBuilder t m, MonadHold t m, PostBuild t m, Prerender js0 t m) => m ()
 mainPag = do
@@ -98,6 +192,15 @@ numberInput = do
         & inputElementConfig_initialValue .~ "0"
         & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "number")
       return $ fmap (fromMaybe 0 . readMaybe . T.unpack) $ _inputElement_value n
+
+numberInputSecond :: (DomBuilder t m, Num a, Read a) => m (Dynamic t a)
+numberInputSecond = do
+      n <- inputElement $ def
+        & inputElementConfig_initialValue .~ "0"
+        & inputElementConfig_elementConfig 
+        . elementConfig_initialAttributes .~ ("type" =: "number")
+      return $ fmap (fromMaybe 0 . readMaybe . T.unpack) 
+                 (_inputElement_value n)      
 
 caixaSoma :: (DomBuilder t m, PostBuild t m) => m ()
 caixaSoma = do
@@ -121,7 +224,7 @@ petPage = do
   el "h3" (text "Pet")
   el "hr" $ blank
   el "div" $ do
-    el "p" (text "Está na página de pet")    
+    el "p" (text "Está na página de pet")              
 
 agendaPage :: (DomBuilder t m, PostBuild t m) => m ()
 agendaPage = do
@@ -129,6 +232,13 @@ agendaPage = do
   el "hr" $ blank
   el "div" $ do
     el "p" (text "Está na página de agenda")
+
+clientePage :: (DomBuilder t m, PostBuild t m) => m ()
+clientePage = do
+  el "h3" (text "Clientes")
+  el "hr" $ blank
+  el "div" $ do
+    el "p" (text "Está na página de clientes")
 
 sobrePage :: (DomBuilder t m, PostBuild t m) => m ()
 sobrePage = do
