@@ -29,11 +29,16 @@ data BackendRoute :: * -> * where
   BackendRoute_Missing :: BackendRoute ()
   -- You can define any routes that will be handled specially by the backend here.
   -- i.e. These do not serve the frontend, but do something different, such as serving static files.
-  BackendRoute_PetRoute :: BackendRoute ()
+  -- BackendRoute_PetRoute :: BackendRoute ()
   BackendRoute_AgendaJson :: BackendRoute ()
   BackendRoute_ClienteJson :: BackendRoute ()
   BackendRoute_PetJson :: BackendRoute ()
-
+  BackendRoute_ClienteListar :: BackendRoute ()
+  BackendRoute_PetListar :: BackendRoute ()
+  BackendRoute_AgendaListar :: BackendRoute ()
+  BackendRoute_ClienteBuscar :: BackendRoute Int
+  BackendRoute_AgendaBuscar :: BackendRoute Int
+  BackendRoute_PetBuscar :: BackendRoute Int
 
 data FrontendRoute :: * -> * where
   FrontendRoute_Main :: FrontendRoute ()
@@ -52,9 +57,15 @@ fullRouteEncoder = mkFullRouteEncoder
   (\case
       BackendRoute_Missing -> PathSegment "missing" $ unitEncoder mempty
       BackendRoute_AgendaJson -> PathSegment "agenda" $ unitEncoder mempty
-      BackendRoute_PetRoute -> PathSegment "petz" $ unitEncoder mempty
+      -- BackendRoute_PetRoute -> PathSegment "petz" $ unitEncoder mempty
       BackendRoute_ClienteJson -> PathSegment "cliente" $ unitEncoder mempty
-      BackendRoute_PetJson  -> PathSegment "pet" $ unitEncoder mempty      
+      BackendRoute_PetJson  -> PathSegment "pet" $ unitEncoder mempty     
+      BackendRoute_ClienteListar ->  PathSegment "cliente/lista" $ unitEncoder mempty     
+      BackendRoute_PetListar ->  PathSegment "pet/lista" $ unitEncoder mempty     
+      BackendRoute_AgendaListar ->  PathSegment "agenda/lista" $ unitEncoder mempty     
+      BackendRoute_ClienteBuscar  -> PathSegment "cliente/buscar" readShowEncoder 
+      BackendRoute_AgendaBuscar  -> PathSegment "agenda/buscar" readShowEncoder 
+      BackendRoute_PetBuscar  -> PathSegment "pet/buscar" readShowEncoder 
       )
   (\case
       FrontendRoute_Main -> PathEnd $ unitEncoder mempty)

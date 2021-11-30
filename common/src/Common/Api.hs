@@ -29,9 +29,27 @@ data AgendaJson = AgendaJson {
     nomeServico :: Text
 } deriving (Generic, ToJSON, FromJSON, ToRow, FromRow, Eq, Show)
 
+data GetAgendaJson = GetAgendaJson {
+    donoIdGet :: Int,
+    donoNomeGet :: Text,
+    donoContatoGet :: Text,
+    dataAgendaGet :: Text,    
+    precoGet :: Double,
+    nomeServicoGet :: Text
+} deriving (Generic, ToJSON, FromJSON, ToRow, FromRow, Eq, Show)
+
 data PetJsonObject = PetJsonObject {
     petId :: Int,
     tutorId :: Int,
     nomePet :: Text,
     racaPet :: Text
+} deriving (Generic, ToJSON, FromJSON, ToRow, FromRow, Eq, Show)
+
+data GetPetJsonObject = GetPetJsonObject {
+    petIdGet :: Int,
+    nomePetGet :: Text,
+    racaPetGet :: Text,
+    tutorIdGet :: Int,
+    tutorNomeGet :: Text,
+    tutorContatoGet :: Text
 } deriving (Generic, ToJSON, FromJSON, ToRow, FromRow, Eq, Show)

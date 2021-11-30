@@ -41,12 +41,32 @@ backend = Backend
         dbcon <- connect getConn
         serve $ do 
           \case 
-            BackendRoute_PetRoute :/ () -> do
-                Just nome <- A.decode <$> readRequestBody 2000
-                liftIO $ do 
-                     execute_ dbcon migration
-                     execute dbcon "INSERT INTO pet (nome) VALUES (?)" [nome :: Text]
-                modifyResponse $ setResponseStatus 200 "OK"            
+            -- BackendRoute_PetRoute :/ () -> do
+            --     Just nome <- A.decode <$> readRequestBody 2000
+            --     liftIO $ do 
+            --          execute_ dbcon migration
+            --          execute dbcon "INSERT INTO pet (nome) VALUES (?)" [nome :: Text]
+            --     modifyResponse $ setResponseStatus 200 "OK"            
+            --gets--
+            BackendRoute_ClienteListar :/ () -> method GET $ do
+                    res :: [ClienteJson] <- liftIO $ do
+                        execute_ dbcon migrateCliente
+                        query_ dbcon "SELECT * from cliente" 
+                    modifyResponse $ setResponseStatus 200 "OK"
+                    writeLazyText (encodeToLazyText res)
+            BackendRoute_AgendaListar :/ () -> method GET $ do
+                    res :: [GetAgendaJson] <- liftIO $ do
+                        execute_ dbcon migrateAgenda
+                        query_ dbcon "select a.tutorId, c.nome, c.contato, to_char(a.dataAgenda, 'dd/MM/yyyy'), a.preco, a.nomeservico from agenda a join cliente c on c.id = a.tutorId order by a.dataAgenda desc" 
+                    modifyResponse $ setResponseStatus 200 "OK"
+                    writeLazyText (encodeToLazyText res)
+            BackendRoute_PetListar :/ () -> method GET $ do
+                    res :: [GetPetJsonObject] <- liftIO $ do
+                        execute_ dbcon migratePet
+                        query_ dbcon "select p.id, p.nome, p.tipo, c.id, c.nome, c.contato from petz p join cliente c on c.id = p.tutorId order by c.nome" 
+                    modifyResponse $ setResponseStatus 200 "OK"
+                    writeLazyText (encodeToLazyText res)
+            --inserts--
             BackendRoute_ClienteJson :/ () -> method POST $ do
                     client <- A.decode <$> readRequestBody 5000
                     case client of
@@ -64,7 +84,7 @@ backend = Backend
                              liftIO $ do
                                  execute_ dbcon migrateAgenda
                                  execute dbcon "INSERT INTO agenda (tutorId, dataAgenda, preco, nomeServico) VALUES (?, ?, ?, ?)"
-                                    (tutorId agenda, dataAgenda agenda, preco agenda, nomeServico agenda) 
+                                    (clienteAgendaId agenda, dataAgenda agenda, preco agenda, nomeServico agenda) 
                              modifyResponse $ setResponseStatus 200 "OK"
                          Nothing -> modifyResponse $ setResponseStatus 500 "ERRO"
             BackendRoute_PetJson :/ () -> method POST $ do
@@ -77,7 +97,34 @@ backend = Backend
                                     (tutorId animal, nomePet animal, racaPet animal) 
                              modifyResponse $ setResponseStatus 200 "OK"
                          Nothing -> modifyResponse $ setResponseStatus 500 "ERRO"            
+            --getId--
+            BackendRoute_ClienteBuscar :/ cid -> method GET $ do
+                    res :: [ClienteJson] <- liftIO $ do
+                        execute_ dbcon migrateCliente
+                        query dbcon "SELECT * from cliente WHERE id=?" (Only (cid :: Int))
+                    if res /= [] then do
+                        modifyResponse $ setResponseStatus 200 "OK"
+                        writeLazyText (encodeToLazyText (Prelude.head res))
+                    else
+                        modifyResponse $ setResponseStatus 404 "NOT FOUND"
+            BackendRoute_AgendaBuscar :/ aid -> method GET $ do
+                    res :: [AgendaJson] <- liftIO $ do
+                        execute_ dbcon migrateAgenda
+                        query dbcon "SELECT * from agenda WHERE id=?" (Only (aid :: Int))
+                    if res /= [] then do
+                        modifyResponse $ setResponseStatus 200 "OK"
+                        writeLazyText (encodeToLazyText (Prelude.head res))
+                    else
+                        modifyResponse $ setResponseStatus 404 "NOT FOUND"
+            BackendRoute_PetBuscar :/ pid -> method GET $ do
+                    res :: [PetJsonObject] <- liftIO $ do
+                        execute_ dbcon migratePet
+                        query dbcon "SELECT * from petz WHERE id=?" (Only (pid :: Int))
+                    if res /= [] then do
+                        modifyResponse $ setResponseStatus 200 "OK"
+                        writeLazyText (encodeToLazyText (Prelude.head res))
+                    else
+                        modifyResponse $ setResponseStatus 404 "NOT FOUND"
             _ -> return ()
-        return ()
   , _backend_routeEncoder = fullRouteEncoder
   }

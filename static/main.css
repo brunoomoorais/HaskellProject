@@ -40,3 +40,7 @@ li:hover {
 
 .hidden {display: none;}
 .show {display: block;}
+
+button {
+  margin-right: 10px;
+}
