@@ -57,7 +57,7 @@ backend = Backend
             BackendRoute_AgendaListar :/ () -> method GET $ do
                     res :: [GetAgendaJson] <- liftIO $ do
                         execute_ dbcon migrateAgenda
-                        query_ dbcon "select a.tutorId, c.nome, c.contato, to_char(a.dataAgenda, 'dd/MM/yyyy'), a.preco, a.nomeservico from agenda a join cliente c on c.id = a.tutorId order by a.dataAgenda desc" 
+                        query_ dbcon "select a.id, a.tutorId, c.nome, c.contato, to_char(a.dataAgenda, 'dd/MM/yyyy'), a.preco, a.nomeservico from agenda a join cliente c on c.id = a.tutorId order by a.dataAgenda desc" 
                     modifyResponse $ setResponseStatus 200 "OK"
                     writeLazyText (encodeToLazyText res)
             BackendRoute_PetListar :/ () -> method GET $ do
@@ -108,9 +108,9 @@ backend = Backend
                     else
                         modifyResponse $ setResponseStatus 404 "NOT FOUND"
             BackendRoute_AgendaBuscar :/ aid -> method GET $ do
-                    res :: [AgendaJson] <- liftIO $ do
+                    res :: [GetAgendaJson] <- liftIO $ do
                         execute_ dbcon migrateAgenda
-                        query dbcon "SELECT * from agenda WHERE id=?" (Only (aid :: Int))
+                        query dbcon "select a.id, a.tutorId, c.nome, c.contato, to_char(a.dataAgenda, 'dd/MM/yyyy'), a.preco, a.nomeservico from agenda a join cliente c on c.id = a.tutorId WHERE a.id=?" (Only (aid :: Int))
                     if res /= [] then do
                         modifyResponse $ setResponseStatus 200 "OK"
                         writeLazyText (encodeToLazyText (Prelude.head res))
@@ -125,6 +125,22 @@ backend = Backend
                         writeLazyText (encodeToLazyText (Prelude.head res))
                     else
                         modifyResponse $ setResponseStatus 404 "NOT FOUND"
+            --delete--
+            BackendRoute_ClienteDelete :/ dcid -> method GET $ do
+                    res :: [ClienteJson] <- liftIO $ do
+                        execute_ dbcon migrateCliente
+                        query dbcon "delete from cliente WHERE id=?" (Only (dcid :: Int))
+                    modifyResponse $ setResponseStatus 200 "OK"
+            BackendRoute_AgendaDelete :/ daid -> method GET $ do
+                    res :: [AgendaJson] <- liftIO $ do
+                        execute_ dbcon migrateAgenda
+                        query dbcon "delete from agenda WHERE id=?" (Only (daid :: Int))
+                    modifyResponse $ setResponseStatus 200 "OK"
+            BackendRoute_PetDelete :/ dpid -> method GET $ do
+                    res :: [PetJsonObject] <- liftIO $ do
+                        execute_ dbcon migratePet
+                        query dbcon "delete from petz WHERE id=?" (Only (dpid :: Int))
+                    modifyResponse $ setResponseStatus 200 "OK"
             _ -> return ()
   , _backend_routeEncoder = fullRouteEncoder
   }

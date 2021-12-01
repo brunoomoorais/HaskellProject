@@ -33,12 +33,18 @@ data BackendRoute :: * -> * where
   BackendRoute_AgendaJson :: BackendRoute ()
   BackendRoute_ClienteJson :: BackendRoute ()
   BackendRoute_PetJson :: BackendRoute ()
+
   BackendRoute_ClienteListar :: BackendRoute ()
   BackendRoute_PetListar :: BackendRoute ()
   BackendRoute_AgendaListar :: BackendRoute ()
+
   BackendRoute_ClienteBuscar :: BackendRoute Int
   BackendRoute_AgendaBuscar :: BackendRoute Int
   BackendRoute_PetBuscar :: BackendRoute Int
+
+  BackendRoute_ClienteDelete :: BackendRoute Int
+  BackendRoute_AgendaDelete :: BackendRoute Int
+  BackendRoute_PetDelete :: BackendRoute Int
 
 data FrontendRoute :: * -> * where
   FrontendRoute_Main :: FrontendRoute ()
@@ -63,9 +69,12 @@ fullRouteEncoder = mkFullRouteEncoder
       BackendRoute_ClienteListar ->  PathSegment "cliente/lista" $ unitEncoder mempty     
       BackendRoute_PetListar ->  PathSegment "pet/lista" $ unitEncoder mempty     
       BackendRoute_AgendaListar ->  PathSegment "agenda/lista" $ unitEncoder mempty     
-      BackendRoute_ClienteBuscar  -> PathSegment "cliente/buscar" readShowEncoder 
-      BackendRoute_AgendaBuscar  -> PathSegment "agenda/buscar" readShowEncoder 
-      BackendRoute_PetBuscar  -> PathSegment "pet/buscar" readShowEncoder 
+      BackendRoute_ClienteBuscar  -> PathSegment "findCliente" readShowEncoder 
+      BackendRoute_AgendaBuscar  -> PathSegment "findAgenda" readShowEncoder 
+      BackendRoute_PetBuscar  -> PathSegment "findPet" readShowEncoder 
+      BackendRoute_ClienteDelete  -> PathSegment "cliente/delete" readShowEncoder 
+      BackendRoute_AgendaDelete  -> PathSegment "agenda/delete" readShowEncoder 
+      BackendRoute_PetDelete  -> PathSegment "pet/delete" readShowEncoder 
       )
   (\case
       FrontendRoute_Main -> PathEnd $ unitEncoder mempty)

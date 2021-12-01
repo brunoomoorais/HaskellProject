@@ -30,6 +30,7 @@ data AgendaJson = AgendaJson {
 } deriving (Generic, ToJSON, FromJSON, ToRow, FromRow, Eq, Show)
 
 data GetAgendaJson = GetAgendaJson {
+    agendaIdGet :: Int,
     donoIdGet :: Int,
     donoNomeGet :: Text,
     donoContatoGet :: Text,

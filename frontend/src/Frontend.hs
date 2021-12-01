@@ -153,8 +153,14 @@ tabAgenda pr = do
         el "td" (text $ donoContatoGet pr)
         el "td" (text $ dataAgendaGet pr)
         el "td" (text $ T.pack $ show $ precoGet pr)
-        el "td" (text $ nomeServicoGet pr)
-        el "td" (elAttr "button" ("class"=: "btn btn-danger") (text "Excluir"))        
+        el "td" (text $ nomeServicoGet pr)        
+        --el "td" (elAttr "button" ("class"=: "btn btn-danger") (text "Excluir"))
+        (submitBtn,_) <- el "td" $ elAttr' "button" ("class"=: "btn btn-danger") (text "Excluir")        
+        -- let click = domEvent Click submitBtn
+        -- let prodEvt = tag agendaIdGet click
+        -- _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
+        --     (pure never)
+        --     (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_AgendaDelete :/ agendaIdGet) <$> prodEvt))
         el "td" (elAttr "button" ("class"=: "btn btn-primary") (text "Editar"))        
         el "td" (elAttr "button" ("class"=: "btn btn-secondary") (text "Consultar"))        
 
