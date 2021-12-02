@@ -22,10 +22,10 @@ migrateCliente :: Query
 migrateCliente = "CREATE TABLE IF NOT EXISTS cliente (id SERIAL PRIMARY KEY, nome TEXT NOT NULL, contato TEXT NOT NULL)"
 
 migratePet :: Query
-migratePet = "CREATE TABLE IF NOT EXISTS petz (id SERIAL, tutorId INT, nome TEXT NOT NULL, tipo TEXT NOT NULL, constraint pk_pet primary key (tutorId, id), constraint fk_pet foreign key (tutorId) references cliente)"
+migratePet = "CREATE TABLE IF NOT EXISTS petz (id SERIAL, tutorId INT, nome TEXT NOT NULL, tipo TEXT NOT NULL, constraint pk_pet primary key (id), constraint fk_pet foreign key (tutorId) references cliente)"
 
 migrateAgenda :: Query
-migrateAgenda = "CREATE TABLE IF NOT EXISTS agenda (id SERIAL, tutorId INT, dataAgenda DATE NOT NULL, preco DOUBLE PRECISION, nomeServico TEXT NOT NULL, constraint pk_agenda primary key (tutorId, id), constraint fk_agenda foreign key (tutorId) references cliente)"
+migrateAgenda = "CREATE TABLE IF NOT EXISTS agenda (id SERIAL, tutorId INT, dataAgenda DATE NOT NULL, preco DOUBLE PRECISION, nomeServico TEXT NOT NULL, constraint pk_agenda primary key (id), constraint fk_agenda foreign key (tutorId) references cliente)"
 
 
 getConn :: ConnectInfo
@@ -126,17 +126,18 @@ backend = Backend
                     else
                         modifyResponse $ setResponseStatus 404 "NOT FOUND"
             --delete--
-            BackendRoute_ClienteDelete :/ dcid -> method GET $ do
+            BackendRoute_ClienteDelete :/ dcid -> method DELETE $ do
                     res :: [ClienteJson] <- liftIO $ do
                         execute_ dbcon migrateCliente
                         query dbcon "delete from cliente WHERE id=?" (Only (dcid :: Int))
                     modifyResponse $ setResponseStatus 200 "OK"
-            BackendRoute_AgendaDelete :/ daid -> method GET $ do
-                    res :: [AgendaJson] <- liftIO $ do
+            BackendRoute_AgendaDelete :/ daid -> method DELETE $ do
+                    res :: [ResponseDelete] <- liftIO $ do
                         execute_ dbcon migrateAgenda
                         query dbcon "delete from agenda WHERE id=?" (Only (daid :: Int))
                     modifyResponse $ setResponseStatus 200 "OK"
-            BackendRoute_PetDelete :/ dpid -> method GET $ do
+                    writeLazyText (encodeToLazyText (Prelude.head res))
+            BackendRoute_PetDelete :/ dpid -> method DELETE $ do
                     res :: [PetJsonObject] <- liftIO $ do
                         execute_ dbcon migratePet
                         query dbcon "delete from petz WHERE id=?" (Only (dpid :: Int))

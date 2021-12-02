@@ -66,15 +66,18 @@ fullRouteEncoder = mkFullRouteEncoder
       -- BackendRoute_PetRoute -> PathSegment "petz" $ unitEncoder mempty
       BackendRoute_ClienteJson -> PathSegment "cliente" $ unitEncoder mempty
       BackendRoute_PetJson  -> PathSegment "pet" $ unitEncoder mempty     
+
       BackendRoute_ClienteListar ->  PathSegment "cliente/lista" $ unitEncoder mempty     
       BackendRoute_PetListar ->  PathSegment "pet/lista" $ unitEncoder mempty     
       BackendRoute_AgendaListar ->  PathSegment "agenda/lista" $ unitEncoder mempty     
+
       BackendRoute_ClienteBuscar  -> PathSegment "findCliente" readShowEncoder 
       BackendRoute_AgendaBuscar  -> PathSegment "findAgenda" readShowEncoder 
       BackendRoute_PetBuscar  -> PathSegment "findPet" readShowEncoder 
-      BackendRoute_ClienteDelete  -> PathSegment "cliente/delete" readShowEncoder 
-      BackendRoute_AgendaDelete  -> PathSegment "agenda/delete" readShowEncoder 
-      BackendRoute_PetDelete  -> PathSegment "pet/delete" readShowEncoder 
+
+      BackendRoute_ClienteDelete  -> PathSegment "deleteCliente" readShowEncoder       
+      BackendRoute_AgendaDelete  -> PathSegment "deleteAgenda" readShowEncoder 
+      BackendRoute_PetDelete  -> PathSegment "deletePet" readShowEncoder 
       )
   (\case
       FrontendRoute_Main -> PathEnd $ unitEncoder mempty)

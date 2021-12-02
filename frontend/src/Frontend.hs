@@ -33,8 +33,14 @@ getPath r = renderBackendRoute checFullREnc r
 getListReqClienteCliente :: XhrRequest ()
 getListReqClienteCliente = xhrRequest "GET" (getPath (BackendRoute_ClienteListar :/ ())) def
 
+-- deleteReqClienteCliente :: XhrRequest ()
+-- deleteReqClienteCliente = xhrRequest "GET" (getPath (BackendRoute_ClienteListar :/ ())) def
+
 getListReqAgenda :: XhrRequest ()
 getListReqAgenda = xhrRequest "GET" (getPath (BackendRoute_AgendaListar :/ ())) def
+
+deleteReqAgenda :: Int -> XhrRequest ()
+deleteReqAgenda id = xhrRequest "DELETE" (getPath (BackendRoute_AgendaDelete :/ id)) def
 
 getListReqPet :: XhrRequest ()
 getListReqPet = xhrRequest "GET" (getPath (BackendRoute_PetListar :/ ())) def
@@ -145,7 +151,11 @@ tabCliente pr = do
         el "td" (elAttr "button" ("class"=: "btn btn-primary") (text "Editar"))        
         el "td" (elAttr "button" ("class"=: "btn btn-secondary") (text "Consultar"))        
 
-tabAgenda :: DomBuilder t m => GetAgendaJson -> m ()
+tabAgenda :: ( DomBuilder t m
+            , Prerender js t m
+            , MonadHold t m
+            , MonadFix m
+            , PostBuild t m) => GetAgendaJson -> m ()
 tabAgenda pr = do 
     el "tr" $ do
         el "td" (text $ T.pack $ show $ donoIdGet pr)
@@ -155,14 +165,15 @@ tabAgenda pr = do
         el "td" (text $ T.pack $ show $ precoGet pr)
         el "td" (text $ nomeServicoGet pr)        
         --el "td" (elAttr "button" ("class"=: "btn btn-danger") (text "Excluir"))
-        (submitBtn,_) <- el "td" $ elAttr' "button" ("class"=: "btn btn-danger") (text "Excluir")        
-        -- let click = domEvent Click submitBtn
-        -- let prodEvt = tag agendaIdGet click
-        -- _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
-        --     (pure never)
-        --     (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_AgendaDelete :/ agendaIdGet) <$> prodEvt))
+        (submitBtn,_) <- el "td" $ elAttr' "button" ("class"=: "btn btn-danger") (text "Excluir")                
         el "td" (elAttr "button" ("class"=: "btn btn-primary") (text "Editar"))        
         el "td" (elAttr "button" ("class"=: "btn btn-secondary") (text "Consultar"))        
+        let click = domEvent Click submitBtn
+        _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
+            (pure never)
+            -- const getListReqClienteCliente
+            (fmap decodeXhrResponse <$> performRequestAsync (const (deleteReqAgenda (agendaIdGet pr)) <$> click))
+        return()
 
 tabPet :: DomBuilder t m => GetPetJsonObject -> m ()
 tabPet pr = do 
