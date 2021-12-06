@@ -54,5 +54,3 @@ data GetPetJsonObject = GetPetJsonObject {
     tutorNomeGet :: Text,
     tutorContatoGet :: Text
 } deriving (Generic, ToJSON, FromJSON, ToRow, FromRow, Eq, Show)
-
-data ResponseDelete = ResponseDelete Int deriving (Generic, ToJSON, FromJSON, ToRow, FromRow, Eq, Show)

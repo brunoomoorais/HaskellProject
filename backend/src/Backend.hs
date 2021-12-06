@@ -102,9 +102,18 @@ backend = Backend
                     else
                         modifyResponse $ setResponseStatus 404 "NOT FOUND"
             BackendRoute_AgendaBuscar :/ aid -> method GET $ do
-                    res :: [AgendaJson] <- liftIO $ do
+                    res :: [GetAgendaJson] <- liftIO $ do
                         execute_ dbcon migrateAgenda
-                        query dbcon "select a.id, a.tutorId, to_char(a.dataAgenda, 'dd/MM/yyyy'), a.preco, a.nomeservico from agenda a join cliente c on c.id = a.tutorId WHERE a.id=?" (Only (aid :: Int))
+                        query dbcon "select a.id, a.tutorId, c.nome, c.contato, to_char(a.dataAgenda, 'yyyy-MM-dd'), a.preco, a.nomeservico from agenda a join cliente c on c.id = a.tutorId WHERE a.id=?" (Only (aid :: Int))
+                    if res /= [] then do
+                        modifyResponse $ setResponseStatus 200 "OK"
+                        writeLazyText (encodeToLazyText (Prelude.head res))
+                    else
+                        modifyResponse $ setResponseStatus 404 "NOT FOUND"
+            BackendRoute_AgendaBuscarId :/ aid -> method GET $ do
+                    res :: [GetAgendaJson] <- liftIO $ do
+                        execute_ dbcon migrateAgenda
+                        query dbcon "select a.id, a.tutorId, c.nome, c.contato, to_char(a.dataAgenda, 'dd/MM/yyyy'), a.preco, a.nomeservico from agenda a join cliente c on c.id = a.tutorId WHERE a.id=?" (Only (aid :: Int))
                     if res /= [] then do
                         modifyResponse $ setResponseStatus 200 "OK"
                         writeLazyText (encodeToLazyText (Prelude.head res))
@@ -132,9 +141,9 @@ backend = Backend
                 else
                     modifyResponse $ setResponseStatus 404 "NOT FOUND"  
             BackendRoute_AgendaDelete :/ dcid -> method POST $ do
-                res :: [AgendaJson] <- liftIO $ do
+                res :: [GetAgendaJson] <- liftIO $ do
                     execute_ dbcon migrateAgenda
-                    query dbcon "SELECT * from agenda where id=?" (Only (dcid :: Int))
+                    query dbcon "select a.id, a.tutorId, c.nome, c.contato, to_char(a.dataAgenda, 'dd/MM/yyyy'), a.preco, a.nomeservico from agenda a join cliente c on c.id = a.tutorId WHERE a.id=?" (Only (dcid :: Int))
                 if res /= [] then do
                     liftIO $ do
                         execute_ dbcon migrateCliente
@@ -170,8 +179,8 @@ backend = Backend
                     Just agenda -> do
                         liftIO $ do
                             execute_ dbcon migrateAgenda
-                            execute dbcon "UPDATE agenda SET tutorId = ?, dataAgenda = ?, preco = ?, nomeServico = ? WHERE id = ?" 
-                                       (clienteAgendaId agenda, dataAgenda agenda, preco agenda, nomeServico agenda, pid)
+                            execute dbcon "UPDATE agenda SET dataAgenda = ?, preco = ?, nomeServico = ? WHERE id = ?" 
+                                       (dataAgenda agenda, preco agenda, nomeServico agenda, pid)
                         modifyResponse $ setResponseStatus 200 "OK"
                     Nothing -> modifyResponse $ setResponseStatus 500 "ERRO"
             BackendRoute_PetEditar :/ pid -> method POST $ do

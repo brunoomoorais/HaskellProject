@@ -40,6 +40,7 @@ data BackendRoute :: * -> * where
 
   BackendRoute_ClienteBuscar :: BackendRoute Int
   BackendRoute_AgendaBuscar :: BackendRoute Int
+  BackendRoute_AgendaBuscarId :: BackendRoute Int
   BackendRoute_PetBuscar :: BackendRoute Int
 
   BackendRoute_ClienteDelete :: BackendRoute Int
@@ -77,6 +78,7 @@ fullRouteEncoder = mkFullRouteEncoder
 
       BackendRoute_ClienteBuscar  -> PathSegment "findCliente" readShowEncoder 
       BackendRoute_AgendaBuscar  -> PathSegment "findAgenda" readShowEncoder 
+      BackendRoute_AgendaBuscarId  -> PathSegment "findIdAgenda" readShowEncoder 
       BackendRoute_PetBuscar  -> PathSegment "findPet" readShowEncoder 
 
       BackendRoute_ClienteDelete  -> PathSegment "deleteCliente" readShowEncoder       
