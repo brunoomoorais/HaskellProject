@@ -108,9 +108,9 @@ backend = Backend
                     else
                         modifyResponse $ setResponseStatus 404 "NOT FOUND"
             BackendRoute_AgendaBuscar :/ aid -> method GET $ do
-                    res :: [GetAgendaJson] <- liftIO $ do
+                    res :: [AgendaJson] <- liftIO $ do
                         execute_ dbcon migrateAgenda
-                        query dbcon "select a.id, a.tutorId, c.nome, c.contato, to_char(a.dataAgenda, 'dd/MM/yyyy'), a.preco, a.nomeservico from agenda a join cliente c on c.id = a.tutorId WHERE a.id=?" (Only (aid :: Int))
+                        query dbcon "select a.id, a.tutorId, to_char(a.dataAgenda, 'dd/MM/yyyy'), a.preco, a.nomeservico from agenda a join cliente c on c.id = a.tutorId WHERE a.id=?" (Only (aid :: Int))
                     if res /= [] then do
                         modifyResponse $ setResponseStatus 200 "OK"
                         writeLazyText (encodeToLazyText (Prelude.head res))
@@ -126,11 +126,17 @@ backend = Backend
                     else
                         modifyResponse $ setResponseStatus 404 "NOT FOUND"
             --delete--
-            BackendRoute_ClienteDelete :/ dcid -> method DELETE $ do
-                    res :: [ClienteJson] <- liftIO $ do
+            BackendRoute_ClienteDelete :/ dcid -> method POST $ do
+                res :: [ClienteJson] <- liftIO $ do
+                    execute_ dbcon migrateCliente
+                    query dbcon "SELECT * from cliente where id=?" (Only (dcid :: Int))
+                if res /= [] then do
+                    liftIO $ do
                         execute_ dbcon migrateCliente
-                        query dbcon "delete from cliente WHERE id=?" (Only (dcid :: Int))
-                    modifyResponse $ setResponseStatus 200 "OK"
+                        execute dbcon "DELETE from cliente where id=?" (Only (dcid :: Int))
+                    modifyResponse $ setResponseStatus 200 "OK"   
+                else
+                    modifyResponse $ setResponseStatus 404 "NOT FOUND"  
             BackendRoute_AgendaDelete :/ daid -> method DELETE $ do
                     res :: [ResponseDelete] <- liftIO $ do
                         execute_ dbcon migrateAgenda
@@ -138,10 +144,21 @@ backend = Backend
                     modifyResponse $ setResponseStatus 200 "OK"
                     writeLazyText (encodeToLazyText (Prelude.head res))
             BackendRoute_PetDelete :/ dpid -> method DELETE $ do
-                    res :: [PetJsonObject] <- liftIO $ do
+                    res :: [ResponseDelete] <- liftIO $ do
                         execute_ dbcon migratePet
                         query dbcon "delete from petz WHERE id=?" (Only (dpid :: Int))
                     modifyResponse $ setResponseStatus 200 "OK"
+            ----------update------------
+            BackendRoute_ClienteEditar :/ pid -> method POST $ do
+                client <- A.decode <$> readRequestBody 2000
+                case client of
+                    Just cliente -> do
+                        liftIO $ do
+                            execute_ dbcon migrateCliente
+                            execute dbcon "UPDATE cliente SET nome = ?, contato = ? WHERE id = ?" 
+                                       (nome cliente, contato cliente, pid)
+                        modifyResponse $ setResponseStatus 200 "OK"
+                    Nothing -> modifyResponse $ setResponseStatus 500 "ERRO"
             _ -> return ()
   , _backend_routeEncoder = fullRouteEncoder
   }

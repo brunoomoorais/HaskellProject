@@ -42,33 +42,18 @@ getListReqAgenda = xhrRequest "GET" (getPath (BackendRoute_AgendaListar :/ ())) 
 deleteReqAgenda :: Int -> XhrRequest ()
 deleteReqAgenda id = xhrRequest "DELETE" (getPath (BackendRoute_AgendaDelete :/ id)) def
 
+deleteReqCliente :: Int -> XhrRequest ()
+deleteReqCliente id = xhrRequest "DELETE" (getPath (BackendRoute_ClienteDelete :/ id)) def
+
+deleteReqPet :: Int -> XhrRequest ()
+deleteReqPet id = xhrRequest "DELETE" (getPath (BackendRoute_PetDelete :/ id)) def
+
 getListReqPet :: XhrRequest ()
 getListReqPet = xhrRequest "GET" (getPath (BackendRoute_PetListar :/ ())) def
 
 sendRequest :: ToJSON a => R BackendRoute -> a -> XhrRequest T.Text
 sendRequest r dados = postJson (getPath r) dados
 
--- getPathPet :: T.Text
--- getPathPet = renderBackendRoute checFullREnc $ BackendRoute_PetRoute :/ ()
-
--- nomeRequest :: T.Text -> XhrRequest T.Text
--- nomeRequest s = postJson getPathPet (PetJson s)
-
--- pagReqPet :: ( DomBuilder t m
---           , Prerender js t m
---           ) => m (Event t T.Text)
--- pagReqPet = do
---     el "h3" (text "Pet - Adicionar")
---     el "hr" $ blank
---     elAttr "p" ("class" =: "title") (text "Nome do pet:") 
---     inpnome <- inputElement def
---     (submitBtn,_) <- elAttr' "button" ("class"=:"btn btn-primary") (text "Inserir")
---     let click = domEvent Click submitBtn
---     let nm = tag (current $ _inputElement_value inpnome) click
---     st <- prerender
---         (pure never)
---         (fmap decodeXhrResponse <$> performRequestAsync (nomeRequest <$> nm))
---     return (fromMaybe "" <$> switchDyn st) 
 
 ---------------------- INSERTS -------------------------------------
 pagReqPet' :: ( DomBuilder t m
@@ -141,15 +126,193 @@ pagReqAgenda = do
     return () 
 -------------------------- LISTAR ------------------------------------
 
-tabCliente :: DomBuilder t m => ClienteJson -> m ()
-tabCliente pr = do 
+tabRegistroCliente :: (PostBuild t m, DomBuilder t m) => Dynamic t ClienteJson -> m (Event t AcaoCliente)
+tabRegistroCliente pr = do     
     el "tr" $ do
-        el "td" (text $ T.pack $ show $ clienteId pr)
-        el "td" (text $ nome pr)
-        el "td" (text $ contato pr)
-        el "td" (elAttr "button" ("class"=: "btn btn-danger") (text "Excluir"))        
-        el "td" (elAttr "button" ("class"=: "btn btn-primary") (text "Editar"))        
-        el "td" (elAttr "button" ("class"=: "btn btn-secondary") (text "Consultar"))        
+        el "td" (dynText $ fmap (T.pack . show . clienteId) pr)
+        el "td" (dynText $ fmap nome pr)
+        el "td" (dynText $ fmap contato pr)        
+        evt1 <- elAttr "td" ("class" =: "update" <> "colspawn" =: "3") $ (fmap (fmap (const Edit)) (button "Editar"))        
+        (btn,_) <- elAttr' "button" ("class"=: "btn btn-primary hidden" <> "id"=:"listar") (text "Consultar")    
+        evt2 <- elAttr "td" ("class" =: "get") $ (fmap (fmap (const GetId)) (button "Consultar"))
+        evt3 <- elAttr "td" ("class" =: "delete") $ (fmap (fmap (const Del)) (button "Excluir"))        
+        evt4 <- elAttr "td" ("class" =: "add") $ (fmap (fmap (const Add)) (button " + "))
+        return (attachPromptlyDynWith (flip ($)) (fmap clienteId pr) (leftmost [evt1, evt2, evt3, evt4]))
+
+reqTabelaCliente' :: ( DomBuilder t m
+            , Prerender js t m
+            , MonadHold t m
+            , MonadFix m
+            , PostBuild t m) => Workflow t m T.Text
+reqTabelaCliente' = Workflow $ do
+    el "div" $ do 
+        el "h3" (text "Clientes") 
+        el "hr" blank
+    (btn,_) <- elAttr' "button" ("class"=: "btn btn-primary hidden" <> "id"=:"listar") (text "Listar Clientes")    
+    let click = domEvent Click btn
+    (btnAdd,_) <- elAttr' "button" ("class"=: "btn btn-primary") (text "Adicionar novo cliente")        
+    let clickAdd = domEvent Click btnAdd
+    prods <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync (const getListReqClienteCliente <$> click))
+    evt <- return (fmap (fromMaybe []) $ switchDyn prods)
+    dynP <- foldDyn (++) [] evt    
+    tb <- elAttr "table" ("class"=:"table") $ do
+        el "thead" $ do
+            -- evt <- elAttr "td" ("class" =: "add") $ (fmap (fmap (const Add)) (button " + "))
+            el "tr" $ do                
+                elAttr "th" ("scope"=:"col") (text "Id")
+                elAttr "th" ("scope"=:"col") (text "Nome")
+                elAttr "th" ("scope"=:"col") (text "Contato")              
+                elAttr "th" ("scope"=:"col") (text "")
+                elAttr "th" ("scope"=:"col") (text "")
+                elAttr "th" ("scope"=:"col") (text "")
+                elAttr "th" ("scope"=:"col") (text "")
+        
+        el "tbody" $ do
+            simpleList dynP tabRegistroCliente
+    tb' <- return $ switchDyn $ fmap leftmost tb
+    return ("", escolherPag <$> tb')
+    where
+        escolherPag (GetId pid) = pagClienteIdFlow pid
+        escolherPag (Edit pid) = editarCliente pid
+        escolherPag (Del pid) = deleteClienteConfirm pid
+        escolherPag (Add _) = adicionarCliente
+
+getIdReqCliente :: Int -> XhrRequest ()
+getIdReqCliente id = xhrRequest "GET" (getPath (BackendRoute_ClienteBuscar :/ id)) def
+
+pagClienteIdFlow :: ( DomBuilder t m
+            , Prerender js t m
+            , MonadHold t m
+            , MonadFix m
+            , PostBuild t m) => Int -> Workflow t m T.Text
+pagClienteIdFlow pid = Workflow $ do
+    el "div" $ do 
+        el "h3" (text "Cliente - Visualizar") 
+        el "hr" blank    
+    (btnret,_) <- elAttr' "button" ("class"=: "btn btn-danger" <> "onclick"=:"loadList()") (text "Voltar")
+    let ret = domEvent Click btnret   
+    (btn,_) <- elAttr' "button" ("class"=: "btn btn-primary hidden" <> "id"=:"mostrar") (text "Mostrar")
+    let click = domEvent Click btn    
+    prod <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync (const (getIdReqCliente pid) <$> click))
+    mdyn <- holdDyn Nothing (switchDyn prod)
+    dynP <- return ((fromMaybe (ClienteJson 0 "" "")) <$> mdyn)    
+    el "div" $ do
+        elAttr "p" ("class" =: "title") (text "Id do cliente:") 
+        el "p" (dynText $ fmap (T.pack . show . clienteId) dynP)        
+        elAttr "p" ("class" =: "title") (text "Nome do cliente:") 
+        el "p" (dynText $ fmap nome dynP)
+        elAttr "p" ("class" =: "title") (text "Contato do cliente:") 
+        el "p" (dynText $ fmap contato dynP)
+
+    return ("" <> "", reqTabelaCliente' <$ ret)  
+
+reqListaCliente :: ( DomBuilder t m
+            , Prerender js t m
+            , MonadHold t m
+            , MonadFix m
+            , PostBuild t m) => m ()
+reqListaCliente = do    
+    r <- workflow reqTabelaCliente'
+    el "div" (dynText r)        
+
+editarCliente :: ( DomBuilder t m
+            , Prerender js t m
+            , MonadHold t m
+            , MonadFix m
+            , PostBuild t m) => Int -> Workflow t m T.Text
+editarCliente pid = Workflow $ do
+    el "div" $ do 
+        el "h3" (text "Cliente - Editar") 
+        el "hr" blank    
+    (btn,_) <- elAttr' "button" ("class"=: "btn btn-primary hidden" <> "id"=:"mostrar") (text "Mostrar")
+    (btnSuccess, _) <- elAttr' "button" ("class"=: "btn btn-success" <> "onclick"=:"loadList()") (text "Salvar Alterações")
+    let submitBtn = domEvent Click btnSuccess
+    let click = domEvent Click btn
+    prod :: Dynamic t (Event t (Maybe ClienteJson)) <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync
+           (const (getIdReqCliente pid) <$> click))
+    mdyn <- return (switchDyn prod)
+    dynE <- return ((fromMaybe (ClienteJson 0 "" "")) <$> mdyn)
+
+    el "div" $ do
+    elAttr "p" ("class" =: "title") (text "Nome do cliente:") 
+    nome <- inputElement $ 
+        def & inputElementConfig_setValue .~ (fmap nome dynE)
+    elAttr "p" ("class" =: "title") (text "Contato do cliente:") 
+    contato <- inputElement $ 
+        def & inputElementConfig_setValue .~ (fmap contato dynE)
+    let prod = fmap (\(n,c) -> ClienteJson 0 n c) (zipDyn (_inputElement_value nome) (_inputElement_value contato))
+            
+    let prodEvt = tag (current prod) submitBtn
+    _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> 
+            performRequestAsync (sendRequest (BackendRoute_ClienteEditar :/ pid) 
+            <$> prodEvt)) 
+    return ("Id do Cliente: " <> (T.pack $ show pid), reqTabelaCliente' <$ submitBtn)  
+
+deleteClienteConfirm  :: ( DomBuilder t m
+            , Prerender js t m
+            , MonadHold t m
+            , MonadFix m
+            , PostBuild t m) => Int -> Workflow t m T.Text
+deleteClienteConfirm  pid = Workflow $ do
+    el "div" $ do 
+        el "h3" (text "Cliente - Deletar") 
+        el "hr" blank      
+    elAttr "p" ("class" =: "title") (text "Deseja mesmo deletar o usuário?")    
+    (btnSim,x) <- elAttr' "button" ("class"=: "btn btn-success" <> "onclick"=:"loadList()") (text "Sim, tenho certeza")
+
+    let simEvt = domEvent Click btnSim
+    x :: Dynamic t (Event t (Maybe T.Text)) <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> 
+            performRequestAsync (sendRequest (BackendRoute_ClienteDelete :/ pid) 
+            <$> simEvt))    
+
+    return ("" <> "", reqTabelaCliente' <$ simEvt)
+    
+
+adicionarCliente :: ( DomBuilder t m
+            , Prerender js t m
+            , MonadHold t m
+            , MonadFix m
+            , PostBuild t m) => Workflow t m T.Text
+adicionarCliente = Workflow $ do
+    el "h3" (text "Cliente - Adicionar")
+    el "hr" (blank)
+    elAttr "p" ("class" =: "title") (text "Nome:") 
+    nome <- inputElement def
+    elAttr "p" ("class" =: "title") (text "Contato:") 
+    contato <- inputElement def
+    (backBtn,_) <- elAttr' "button" ("class"=:"btn btn-danger" <> "onclick"=:"loadList()") (text "Voltar")
+    let back = domEvent Click backBtn
+    let object = fmap (\(n,c) -> ClienteJson 0 n c) (zipDyn (_inputElement_value nome) (_inputElement_value contato))
+    (submitBtn,_) <- elAttr' "button" ("class"=:"btn btn-primary") (text "Adicionar")
+    let click = domEvent Click submitBtn
+    let prodEvt = tag (current object) click
+    _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_ClienteJson :/ ()) <$> prodEvt))        
+    return ("" <> "", reqTabelaCliente' <$ back)  
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 tabAgenda :: ( DomBuilder t m
             , Prerender js t m
@@ -175,7 +338,11 @@ tabAgenda pr = do
             (fmap decodeXhrResponse <$> performRequestAsync (const (deleteReqAgenda (agendaIdGet pr)) <$> click))
         return()
 
-tabPet :: DomBuilder t m => GetPetJsonObject -> m ()
+tabPet :: ( DomBuilder t m
+            , Prerender js t m
+            , MonadHold t m
+            , MonadFix m
+            , PostBuild t m) => GetPetJsonObject -> m ()
 tabPet pr = do 
     el "tr" $ do
         el "td" (text $ T.pack $ show $ petIdGet pr)
@@ -184,39 +351,14 @@ tabPet pr = do
         el "td" (text $ T.pack $ show $ tutorIdGet pr)
         el "td" (text $ tutorNomeGet pr)
         el "td" (text $ tutorContatoGet pr)
-        el "td" (elAttr "button" ("class"=: "btn btn-danger") (text "Excluir"))        
+        (submitBtn,_) <- el "td" $ elAttr' "button" ("class"=: "btn btn-danger") (text "Excluir")                
         el "td" (elAttr "button" ("class"=: "btn btn-primary") (text "Editar"))        
         el "td" (elAttr "button" ("class"=: "btn btn-secondary") (text "Consultar"))        
-        
-reqListaCliente :: ( DomBuilder t m
-            , Prerender js t m
-            , MonadHold t m
-            , MonadFix m
-            , PostBuild t m) => m ()
-reqListaCliente = do
-    el "h3" (text "Clientes")
-    el "hr" $ blank
-    (btn, _) <- elAttr' "button" ("class"=: "btn btn-primary") (text "Listar clientes")
-    let click = domEvent Click btn
-    (btnAdd, _) <- elAttr' "button" ("class"=: "btn btn-primary") (text "Adicionar")
-    prods :: Dynamic t (Event t (Maybe [ClienteJson])) <- prerender
-        (pure never)
-        (fmap decodeXhrResponse <$> performRequestAsync (const getListReqClienteCliente <$> click))
-    dynP <- foldDyn (\ps d -> case ps of
-                            Nothing -> []
-                            Just p -> d++p) [] (switchDyn prods)
-    elAttr "table" ("class"=:"table") $ do
-        el "thead" $ do
-            el "tr" $ do
-                elAttr "th" ("scope"=:"col") (text "Id")
-                elAttr "th" ("scope"=:"col") (text "Nome")
-                elAttr "th" ("scope"=:"col") (text "Contato")
-                elAttr "th" ("scope"=:"col") (text "")
-                elAttr "th" ("scope"=:"col") (text "")
-                elAttr "th" ("scope"=:"col") (text "")                      
-        el "tbody" $ do
-            dyn_ (fmap sequence (ffor dynP (fmap tabCliente)))
-    return ()
+        let click = domEvent Click submitBtn
+        _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
+            (pure never)
+            (fmap decodeXhrResponse <$> performRequestAsync (const (deleteReqPet (petIdGet pr)) <$> click))
+        return()
 
 reqListaAgenda :: ( DomBuilder t m
             , Prerender js t m
@@ -287,25 +429,26 @@ reqListaPet = do
 
 
 ------FRONTEND-----------
-data Pagina = HomePage | Pet | PetAdd | Agenda | Sobre | Cliente | ClienteAdd | AgendaAdd
+data Pagina = HomePage | Pet | PetAdd | PagPetEdit Int | PagPetId Int | Agenda | PagAgendaEdit Int | PagAgendaId Int | Sobre | Cliente | ClienteAdd | AgendaAdd
+data AcaoCliente = GetId Int | Edit Int | Del Int | Add Int
 
-clickLi :: DomBuilder t m => Pagina -> T.Text -> m (Event t Pagina)
-clickLi p t = do
-    (ev, _) <- el' "li" (elAttr "a" ("class" =: "nav-link active" <> "aria-current" =: "page" <> "href" =: "#") (text t))
+clickLi :: DomBuilder t m => Pagina -> T.Text -> T.Text -> m (Event t Pagina)
+clickLi p t d = do
+    (ev, _) <- el' "li" (elAttr "a" ("onclick"=:d <> "class" =: "nav-link active" <> "aria-current" =: "page" <> "href" =: "#") (text t))
     return ((\_ -> p) <$> domEvent Click ev)
     
 menuLi :: (DomBuilder t m, MonadHold t m) => m (Dynamic t Pagina)
 menuLi = do
     evs <- elAttr "div" ("class" =: "container-fluid") $
             elAttr "ul" ("class" =: "navbar-nav") $ do
-        p1 <- clickLi HomePage "Home"
-        p2 <- clickLi Pet "Pets"
-        p3 <- clickLi Agenda "Agendamentos"
-        p4 <- clickLi Cliente "Clientes"
+        p1 <- clickLi HomePage "Home" "loadList()"
+        p2 <- clickLi Pet "Pets" ""
+        p3 <- clickLi Agenda "Agendamentos" "loadList()"
+        p4 <- clickLi Cliente "Clientes" "loadList()"
         --p5 <- clickLi Sobre "Sobre"
-        p6 <- clickLi PetAdd "Pet - Add"        
-        p7 <- clickLi ClienteAdd "Cliente - Add"
-        p8 <- clickLi AgendaAdd "Agenda - Add"        
+        p6 <- clickLi PetAdd "Pet - Add" ""
+        p7 <- clickLi ClienteAdd "Cliente - Add" ""
+        p8 <- clickLi AgendaAdd "Agenda - Add" ""        
         return (leftmost [p1,p3,p2,p4, p6, p7, p8])
     holdDyn HomePage evs    
     
@@ -315,7 +458,7 @@ currPag p =
          HomePage -> homePage
          Pet -> reqListaPet--petPage
          Agenda -> reqListaAgenda--agendaPage
-         Cliente -> reqListaCliente --clientePage
+         Cliente -> reqListaCliente --reqListaCliente --clientePage
          Sobre -> sobrePage
          PetAdd -> pagReqPet'
          ClienteAdd -> pagReqCliente
@@ -341,16 +484,6 @@ numberInputSecond = do
         . elementConfig_initialAttributes .~ ("type" =: "number")
       return $ fmap (fromMaybe 0 . readMaybe . T.unpack) 
                  (_inputElement_value n)      
-
--- caixaSoma :: (DomBuilder t m, PostBuild t m) => m ()
--- caixaSoma = do
---     el "p" $ text "Primeiro Numero:"
---     n1 <- numberInput -- m (Dynamic t Double)    
---     el "br" $ blank
---     el "p" $ text "Segundo número:"    
---     n2 <- numberInput -- m (Dynamic t Double)
---     text " "
---     dynText (fmap (T.pack . show) (zipDynWith (+) n1 n2))
 
 homePage :: (DomBuilder t m, PostBuild t m) => m ()
 homePage = do
@@ -395,53 +528,6 @@ sobrePage = do
     elAttr "p" ("class" =: "title") (text "Projeto:")
     elAttr "p" ("class" =: "") (text "O projeto tem como objetivo simular o CRUD de Agenda e Pet, com base em um usuário que deseja organizar os horários de passeio e consulta de seus pets")    
 
-   
--- caixas :: (DomBuilder t m, PostBuild t m) => m ()
--- caixas = do
---     el "p" $ text "Nome:"
---     t1 <- inputElement def -- m (Dynamic Text)
---     el "br" $ blank
---     el "p" $ text "Sobrenome:"
---     t2 <- inputElement def -- m (Dynamic Text)
---     text " "
---     dynText (zipDynWith (<>) (_inputElement_value t1) (_inputElement_value t2))
-
--- revText :: T.Text -> T.Text
--- revText t = T.pack (reverse (T.unpack t))
-   
--- buttonClick :: (DomBuilder t m, PostBuild t m, MonadHold t m) => m (Event t T.Text)
--- buttonClick = do
---     t <- inputElement def
---     (e,_) <- el' "button" (text "OK")
---     return $ attachPromptlyDynWith const 
---                                    (fmap revText (_inputElement_value t)) 
---                                    (domEvent Click e)            
-
--- bttnEvt :: (DomBuilder t m, PostBuild t m, MonadHold t m) => m ()
--- bttnEvt = do
---     evt <- buttonClick
---     hl <-  holdDyn "" evt -- Event -> Dynamic 
---     el "div" (dynText hl)
-    
-
--- sumButton :: (DomBuilder t m, PostBuild t m, MonadHold t m) 
---           => m (Event t Double)
--- sumButton = do
---     n1 <- numberInput
---     text " "
---     n2 <- numberInput
---     text " "
---     (e,_) <- el' "button" (text "OK")
---     let dynDouble = zipDynWith (+) n1  n2
---     return $ attachPromptlyDynWith const    
---                                    dynDouble 
---                                    (domEvent Click e)
-
--- sumEvt :: (DomBuilder t m, PostBuild t m, MonadHold t m) => m ()
--- sumEvt = do
---     evt <- sumButton
---     s <- holdDyn 0 evt 
---     el "div" (dynText $ fmap (T.pack . show) s) 
 
 
 -----------------------
@@ -452,21 +538,10 @@ frontend = Frontend
       elAttr "link" ("href" =: static @"bootstrap.min.css" <> "type" =: "text/css" <> "rel" =: "stylesheet") blank
       elAttr "link" ("href" =: static @"main.css" <> "type" =: "text/css" <> "rel" =: "stylesheet") blank
       elAttr "meta" ("charset" =: "utf-8") blank
-      elAttr "meta" ("name" =: "viewport" <> "content" =: "width=device-width, initial-scale=1") blank      
-
-      -- <!-- Bootstrap CSS -->
-      -- elAttr "link" ("href" =: "https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" <> "integrity" =: "sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" <> "crossorigin" =: "anonymous") blank
+      elAttr "meta" ("name" =: "viewport" <> "content" =: "width=device-width, initial-scale=1") blank            
+      elAttr "script" ("type"=:"text/javascript") (text "function mostrar(){setTimeout(function(){document.getElementById(\"mostrar\").click();}, 400);};function loadList(){setTimeout(function(){document.getElementById(\"listar\").click();}, 400);setTimeout(function(){document.querySelectorAll(\"td button\").forEach(x => {x.onclick = mostrar;});}, 1000);};")
+    
   , _frontend_body = do
-      mainPag
-      -- caixas
-      -- el "br" $ blank
-      -- el "br" $ blank
-      -- caixaSoma
-      -- el "br" $ blank
-      -- el "br" $ blank
-      -- bttnEvt
-      -- el "br" $ blank
-      -- el "br" $ blank
-      -- sumEvt
+      mainPag      
       return ()
   }

@@ -46,6 +46,10 @@ data BackendRoute :: * -> * where
   BackendRoute_AgendaDelete :: BackendRoute Int
   BackendRoute_PetDelete :: BackendRoute Int
 
+  BackendRoute_ClienteEditar :: BackendRoute Int
+  BackendRoute_AgendaEditar :: BackendRoute Int
+  BackendRoute_PetEditar :: BackendRoute Int
+
 data FrontendRoute :: * -> * where
   FrontendRoute_Main :: FrontendRoute ()
   -- This type is used to define frontend routes, i.e. ones for which the backend will serve the frontend.
@@ -78,6 +82,10 @@ fullRouteEncoder = mkFullRouteEncoder
       BackendRoute_ClienteDelete  -> PathSegment "deleteCliente" readShowEncoder       
       BackendRoute_AgendaDelete  -> PathSegment "deleteAgenda" readShowEncoder 
       BackendRoute_PetDelete  -> PathSegment "deletePet" readShowEncoder 
+
+      BackendRoute_ClienteEditar  -> PathSegment "editCliente" readShowEncoder 
+      BackendRoute_AgendaEditar  -> PathSegment "editAgenda" readShowEncoder 
+      BackendRoute_PetEditar  -> PathSegment "editPet" readShowEncoder 
       )
   (\case
       FrontendRoute_Main -> PathEnd $ unitEncoder mempty)
