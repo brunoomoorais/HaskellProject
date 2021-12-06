@@ -40,13 +40,7 @@ backend = Backend
   { _backend_run = \serve -> do
         dbcon <- connect getConn
         serve $ do 
-          \case 
-            -- BackendRoute_PetRoute :/ () -> do
-            --     Just nome <- A.decode <$> readRequestBody 2000
-            --     liftIO $ do 
-            --          execute_ dbcon migration
-            --          execute dbcon "INSERT INTO pet (nome) VALUES (?)" [nome :: Text]
-            --     modifyResponse $ setResponseStatus 200 "OK"            
+          \case            
             --gets--
             BackendRoute_ClienteListar :/ () -> method GET $ do
                     res :: [ClienteJson] <- liftIO $ do
@@ -137,17 +131,28 @@ backend = Backend
                     modifyResponse $ setResponseStatus 200 "OK"   
                 else
                     modifyResponse $ setResponseStatus 404 "NOT FOUND"  
-            BackendRoute_AgendaDelete :/ daid -> method DELETE $ do
-                    res :: [ResponseDelete] <- liftIO $ do
-                        execute_ dbcon migrateAgenda
-                        query dbcon "delete from agenda WHERE id=?" (Only (daid :: Int))
-                    modifyResponse $ setResponseStatus 200 "OK"
-                    writeLazyText (encodeToLazyText (Prelude.head res))
-            BackendRoute_PetDelete :/ dpid -> method DELETE $ do
-                    res :: [ResponseDelete] <- liftIO $ do
-                        execute_ dbcon migratePet
-                        query dbcon "delete from petz WHERE id=?" (Only (dpid :: Int))
-                    modifyResponse $ setResponseStatus 200 "OK"
+            BackendRoute_AgendaDelete :/ dcid -> method POST $ do
+                res :: [AgendaJson] <- liftIO $ do
+                    execute_ dbcon migrateAgenda
+                    query dbcon "SELECT * from agenda where id=?" (Only (dcid :: Int))
+                if res /= [] then do
+                    liftIO $ do
+                        execute_ dbcon migrateCliente
+                        execute dbcon "DELETE from agenda where id=?" (Only (dcid :: Int))
+                    modifyResponse $ setResponseStatus 200 "OK"   
+                else
+                    modifyResponse $ setResponseStatus 404 "NOT FOUND"  
+            BackendRoute_PetDelete :/ dcid -> method POST $ do
+                res :: [PetJsonObject] <- liftIO $ do
+                    execute_ dbcon migratePet
+                    query dbcon "SELECT * from petz where id = ?" (Only (dcid :: Int))
+                if res /= [] then do
+                    liftIO $ do
+                        execute_ dbcon migrateCliente
+                        execute dbcon "DELETE from petz where id=?" (Only (dcid :: Int))
+                    modifyResponse $ setResponseStatus 200 "OK"   
+                else
+                    modifyResponse $ setResponseStatus 404 "NOT FOUND"  
             ----------update------------
             BackendRoute_ClienteEditar :/ pid -> method POST $ do
                 client <- A.decode <$> readRequestBody 2000
@@ -157,6 +162,26 @@ backend = Backend
                             execute_ dbcon migrateCliente
                             execute dbcon "UPDATE cliente SET nome = ?, contato = ? WHERE id = ?" 
                                        (nome cliente, contato cliente, pid)
+                        modifyResponse $ setResponseStatus 200 "OK"
+                    Nothing -> modifyResponse $ setResponseStatus 500 "ERRO"
+            BackendRoute_AgendaEditar :/ pid -> method POST $ do
+                scheduler <- A.decode <$> readRequestBody 2000
+                case scheduler of
+                    Just agenda -> do
+                        liftIO $ do
+                            execute_ dbcon migrateAgenda
+                            execute dbcon "UPDATE agenda SET tutorId = ?, dataAgenda = ?, preco = ?, nomeServico = ? WHERE id = ?" 
+                                       (clienteAgendaId agenda, dataAgenda agenda, preco agenda, nomeServico agenda, pid)
+                        modifyResponse $ setResponseStatus 200 "OK"
+                    Nothing -> modifyResponse $ setResponseStatus 500 "ERRO"
+            BackendRoute_PetEditar :/ pid -> method POST $ do
+                pet <- A.decode <$> readRequestBody 2000
+                case pet of
+                    Just animal -> do
+                        liftIO $ do
+                            execute_ dbcon migratePet
+                            execute dbcon "UPDATE petz SET nome = ?, tipo = ? WHERE id = ?" 
+                                       (nomePet animal, racaPet animal, pid)
                         modifyResponse $ setResponseStatus 200 "OK"
                     Nothing -> modifyResponse $ setResponseStatus 500 "ERRO"
             _ -> return ()
