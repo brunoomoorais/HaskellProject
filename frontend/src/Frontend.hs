@@ -33,20 +33,8 @@ getPath r = renderBackendRoute checFullREnc r
 getListReqClienteCliente :: XhrRequest ()
 getListReqClienteCliente = xhrRequest "GET" (getPath (BackendRoute_ClienteListar :/ ())) def
 
--- deleteReqClienteCliente :: XhrRequest ()
--- deleteReqClienteCliente = xhrRequest "GET" (getPath (BackendRoute_ClienteListar :/ ())) def
-
 getListReqAgenda :: XhrRequest ()
 getListReqAgenda = xhrRequest "GET" (getPath (BackendRoute_AgendaListar :/ ())) def
-
--- deleteReqAgenda :: Int -> XhrRequest ()
--- deleteReqAgenda id = xhrRequest "DELETE" (getPath (BackendRoute_AgendaDelete :/ id)) def
-
--- deleteReqCliente :: Int -> XhrRequest ()
--- deleteReqCliente id = xhrRequest "DELETE" (getPath (BackendRoute_ClienteDelete :/ id)) def
-
--- deleteReqPet :: Int -> XhrRequest ()
--- deleteReqPet id = xhrRequest "DELETE" (getPath (BackendRoute_PetDelete :/ id)) def
 
 getListReqPet :: XhrRequest ()
 getListReqPet = xhrRequest "GET" (getPath (BackendRoute_PetListar :/ ())) def
@@ -56,27 +44,6 @@ sendRequest r dados = postJson (getPath r) dados
 
 
 ---------------------- INSERTS -------------------------------------
--- pagReqPet' :: ( DomBuilder t m
---            , Prerender js t m
---            ) => m ()
--- pagReqPet' = do
---     el "h3" (text "Pet - Adicionar")
---     el "hr" (blank)
---     elAttr "p" ("class" =: "title") (text "Id do cliente:") 
---     id <- numberInputSecond
---     elAttr "p" ("class" =: "title") (text "Nome do pet:") 
---     nome <- inputElement def
---     elAttr "p" ("class" =: "title") (text "Tipo do pet:") 
---     tipo <- inputElement def
---     (backBtn,_) <- elAttr' "button" ("class"=:"btn btn-danger") (text "Voltar")    
---     let object = fmap (\((i,n),r) -> PetJsonObject 0 i n r) (zipDyn (zipDyn id  (_inputElement_value nome)) (_inputElement_value tipo))
---     (submitBtn,_) <- elAttr' "button" ("class"=:"btn btn-primary") (text "Adicionar")
---     let click = domEvent Click submitBtn
---     let prodEvt = tag (current object) click
---     _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
---         (pure never)
---         (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_PetJson :/ ()) <$> prodEvt))
---     return ()
 
 pagReqCliente :: ( DomBuilder t m
            , Prerender js t m
@@ -88,7 +55,7 @@ pagReqCliente = do
     nome <- inputElement def
     elAttr "p" ("class" =: "title") (text "Contato:") 
     contato <- inputElement def
-    (backBtn,_) <- elAttr' "button" ("class"=:"btn btn-danger") (text "Voltar")
+    -- (backBtn,_) <- elAttr' "button" ("class"=:"btn btn-danger") (text "Voltar")
     -- let back = ((\_ -> Cliente) <$> domEvent Click backBtn)    
     let object = fmap (\(n,c) -> ClienteJson 0 n c) (zipDyn (_inputElement_value nome) (_inputElement_value contato))
     (submitBtn,_) <- elAttr' "button" ("class"=:"btn btn-primary") (text "Adicionar")
@@ -113,7 +80,7 @@ pagReqAgenda = do
     preco <- numberInputSecond
     elAttr "p" ("class" =: "title") (text "Nome do serviço:") 
     nomeServico <- inputElement def
-    (backBtn,_) <- elAttr' "button" ("class"=:"btn btn-danger") (text "Voltar") 
+    -- (backBtn,_) <- elAttr' "button" ("class"=:"btn btn-danger") (text "Voltar") 
     let object = fmap (\((c,d),(p, n)) -> AgendaJson 0 c d p n) (zipDyn (zipDyn id  (_inputElement_value date)) (zipDyn preco  (_inputElement_value nomeServico)))
     (submitBtn,_) <- elAttr' "button" ("class"=:"btn btn-primary") (text "Adicionar")
     let clickAgenda = domEvent Click submitBtn
@@ -148,8 +115,8 @@ reqTabelaCliente' = Workflow $ do
         el "hr" blank
     (btn,_) <- elAttr' "button" ("class"=: "btn btn-primary hidden" <> "id"=:"listar") (text "Listar Clientes")    
     let click = domEvent Click btn
-    (btnAdd,_) <- elAttr' "button" ("class"=: "btn btn-primary") (text "Adicionar novo cliente")        
-    let clickAdd = domEvent Click btnAdd    
+    -- (btnAdd,_) <- elAttr' "button" ("class"=: "btn btn-primary") (text "Adicionar novo cliente")        
+    -- let clickAdd = domEvent Click btnAdd    
     prods <- prerender
         (pure never)
         (fmap decodeXhrResponse <$> performRequestAsync (const getListReqClienteCliente <$> click))
@@ -157,7 +124,6 @@ reqTabelaCliente' = Workflow $ do
     dynP <- foldDyn (++) [] evt    
     tb <- elAttr "table" ("class"=:"table") $ do
         el "thead" $ do
-            -- evt <- elAttr "td" ("class" =: "add") $ (fmap (fmap (const Add)) (button " + "))
             el "tr" $ do                
                 elAttr "th" ("scope"=:"col") (text "Id")
                 elAttr "th" ("scope"=:"col") (text "Nome")
@@ -533,8 +499,8 @@ reqTabelaAgenda' = Workflow $ do
         el "hr" blank
     (btn,_) <- elAttr' "button" ("class"=: "btn btn-primary hidden" <> "id"=:"listar") (text "Listar Agenda")    
     let click = domEvent Click btn
-    (btnAdd,_) <- elAttr' "button" ("class"=: "btn btn-primary") (text "Adicionar novo agendamento")        
-    let clickAdd = domEvent Click btnAdd    
+    -- (btnAdd,_) <- elAttr' "button" ("class"=: "btn btn-primary") (text "Adicionar novo agendamento")        
+    -- let clickAdd = domEvent Click btnAdd    
     prods <- prerender
         (pure never)
         (fmap decodeXhrResponse <$> performRequestAsync (const getListReqAgenda <$> click))
@@ -596,7 +562,7 @@ pagAgendaIdFlow pid = Workflow $ do
         elAttr "p" ("class" =: "title") (text "Preço:") 
         el "p" (dynText $ fmap (T.pack . show . precoGet) dynP)
         elAttr "p" ("class" =: "title") (text "Nome do dono:") 
-        el "p" (dynText $ fmap donoContatoGet dynP)     
+        el "p" (dynText $ fmap donoNomeGet dynP)     
         elAttr "p" ("class" =: "title") (text "Contato:") 
         el "p" (dynText $ fmap donoContatoGet dynP)
 
@@ -669,132 +635,12 @@ deleteAgendaConfirm  pid = Workflow $ do
             performRequestAsync (sendRequest (BackendRoute_AgendaDelete :/ pid) 
             <$> simEvt))    
     return ("" <> "", reqTabelaAgenda' <$ simEvt)
-    
-
-adicionarAgenda :: ( DomBuilder t m
-            , Prerender js t m
-            , MonadHold t m
-            , MonadFix m
-            , PostBuild t m) => Workflow t m T.Text
-adicionarAgenda = Workflow $ do
-    el "h3" (text "Agenda - Adicionar")
-    el "hr" (blank)
-    elAttr "p" ("class" =: "title") (text "Nome:") 
-    nome <- inputElement def
-    elAttr "p" ("class" =: "title") (text "Contato:") 
-    contato <- inputElement def
-    (backBtn,_) <- elAttr' "button" ("class"=:"btn btn-danger" <> "onclick"=:"loadList()") (text "Voltar")
-    let back = domEvent Click backBtn
-    let object = fmap (\(n,c) -> ClienteJson 0 n c) (zipDyn (_inputElement_value nome) (_inputElement_value contato))
-    (submitBtn,_) <- elAttr' "button" ("class"=:"btn btn-primary") (text "Adicionar")
-    let click = domEvent Click submitBtn
-    let prodEvt = tag (current object) click
-    _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
-        (pure never)
-        (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_ClienteJson :/ ()) <$> prodEvt))        
-    return ("" <> "", reqTabelaCliente' <$ back)  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--- tabAgenda :: ( DomBuilder t m
---             , Prerender js t m
---             , MonadHold t m
---             , MonadFix m
---             , PostBuild t m) => GetAgendaJson -> m ()
--- tabAgenda pr = do 
---     el "tr" $ do
---         el "td" (text $ T.pack $ show $ donoIdGet pr)
---         el "td" (text $ donoNomeGet pr)
---         el "td" (text $ donoContatoGet pr)
---         el "td" (text $ dataAgendaGet pr)
---         el "td" (text $ T.pack $ show $ precoGet pr)
---         el "td" (text $ nomeServicoGet pr)        
---         --el "td" (elAttr "button" ("class"=: "btn btn-danger") (text "Excluir"))
---         (submitBtn,_) <- el "td" $ elAttr' "button" ("class"=: "btn btn-danger") (text "Excluir")                
---         el "td" (elAttr "button" ("class"=: "btn btn-primary") (text "Editar"))        
---         el "td" (elAttr "button" ("class"=: "btn btn-secondary") (text "Consultar"))        
---         let click = domEvent Click submitBtn
---         _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
---             (pure never)
---             -- const getListReqClienteCliente
---             (fmap decodeXhrResponse <$> performRequestAsync (const (deleteReqAgenda (agendaIdGet pr)) <$> click))
---         return()
-
--- tabPet :: ( DomBuilder t m
---             , Prerender js t m
---             , MonadHold t m
---             , MonadFix m
---             , PostBuild t m) => GetPetJsonObject -> m ()
--- tabPet pr = do 
---     el "tr" $ do
---         el "td" (text $ T.pack $ show $ petIdGet pr)
---         el "td" (text $ nomePetGet pr)
---         el "td" (text $ racaPetGet pr)
---         el "td" (text $ T.pack $ show $ tutorIdGet pr)
---         el "td" (text $ tutorNomeGet pr)
---         el "td" (text $ tutorContatoGet pr)
---         (submitBtn,_) <- el "td" $ elAttr' "button" ("class"=: "btn btn-danger") (text "Excluir")                
---         el "td" (elAttr "button" ("class"=: "btn btn-primary") (text "Editar"))        
---         el "td" (elAttr "button" ("class"=: "btn btn-secondary") (text "Consultar"))        
---         let click = domEvent Click submitBtn
---         _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
---             (pure never)
---             (fmap decodeXhrResponse <$> performRequestAsync (const (deleteReqPet (petIdGet pr)) <$> click))
---         return()
-
--- reqListaAgenda :: ( DomBuilder t m
---             , Prerender js t m
---             , MonadHold t m
---             , MonadFix m
---             , PostBuild t m) => m ()
--- reqListaAgenda = do
---     el "h3" (text "Agendamentos")
---     el "hr" $ blank
---     (btn, _) <- elAttr' "button" ("class"=: "btn btn-primary") (text "Listar agenda")
---     let click = domEvent Click btn
---     (btnAdd, _) <- elAttr' "button" ("class"=: "btn btn-primary") (text "Adicionar")
---     prods :: Dynamic t (Event t (Maybe [GetAgendaJson])) <- prerender
---         (pure never)
---         (fmap decodeXhrResponse <$> performRequestAsync (const getListReqAgenda <$> click))
---     dynP <- foldDyn (\ps d -> case ps of
---                             Nothing -> []
---                             Just p -> d++p) [] (switchDyn prods)
---     elAttr "table" ("class"=:"table") $ do
---         el "thead" $ do
---             el "tr" $ do
---                 elAttr "th" ("scope"=:"col") (text "Id do dono")
---                 elAttr "th" ("scope"=:"col") (text "Nome do dono")
---                 elAttr "th" ("scope"=:"col") (text "Contato do dono")
---                 elAttr "th" ("scope"=:"col") (text "Data")     
---                 elAttr "th" ("scope"=:"col") (text "Preço")                   
---                 elAttr "th" ("scope"=:"col") (text "Serviço")                
---                 elAttr "th" ("scope"=:"col") (text "")
---                 elAttr "th" ("scope"=:"col") (text "")
---                 elAttr "th" ("scope"=:"col") (text "")                   
-
---         el "tbody" $ do
---             dyn_ (fmap sequence (ffor dynP (fmap tabAgenda)))
-
-------------------------
 
 
 ------FRONTEND-----------
 data Pagina = HomePage | Pet | PetAdd | PagPetEdit Int | PagPetId Int | Agenda | PagAgendaEdit Int | PagAgendaId Int | Sobre | Cliente | ClienteAdd | AgendaAdd
 data AcaoCliente = GetId Int | Edit Int | Del Int | Add Int
 data AcaoPet = PetGetId Int | PetEdit Int | PetDel Int
---AgendaAdd Int
 data AcaoAgenda = AgendaGetId Int | AgendaEdit Int | AgendaDel Int
 
 clickLi :: DomBuilder t m => Pagina -> T.Text -> T.Text -> m (Event t Pagina)
@@ -870,26 +716,6 @@ homePage = do
     elAttr "p" ("class" =: "title") (text "Projeto:")
     elAttr "p" ("class" =: "") (text "O projeto tem como objetivo simular o CRUD de Agenda e Pet, com base em um usuário que deseja organizar os horários de passeio e consulta de seus pets")    
 
-petPage :: (DomBuilder t m, PostBuild t m) => m ()
-petPage = do
-  el "h3" (text "Pet")
-  el "hr" $ blank
-  el "div" $ do
-    el "p" (text "Está na página de pet")              
-
-agendaPage :: (DomBuilder t m, PostBuild t m) => m ()
-agendaPage = do
-  el "h3" (text "Agenda")
-  el "hr" $ blank
-  el "div" $ do
-    el "p" (text "Está na página de agenda")
-
-clientePage :: (DomBuilder t m, PostBuild t m) => m ()
-clientePage = do
-  el "h3" (text "Clientes")
-  el "hr" $ blank
-  el "div" $ do
-    el "p" (text "Está na página de clientes")
 
 sobrePage :: (DomBuilder t m, PostBuild t m) => m ()
 sobrePage = do
