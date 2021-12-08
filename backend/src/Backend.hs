@@ -29,11 +29,11 @@ migrateAgenda = "CREATE TABLE IF NOT EXISTS agenda (id SERIAL, tutorId INT, data
 
 
 getConn :: ConnectInfo
-getConn = ConnectInfo "ec2-44-198-80-194.compute-1.amazonaws.com"
+getConn = ConnectInfo ""
                       5432 -- porta
-                      "rfcjlufwdirbvm"
-                      "f0d6b1feeb3c3feaf1dc3477a8078281e466096f35299520bbd8c7e441acb967"
-                      "d41is3l3biup4f"
+                      ""
+                      ""
+                      ""
 
 backend :: Backend BackendRoute FrontendRoute
 backend = Backend

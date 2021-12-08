@@ -714,7 +714,7 @@ homePage = do
     elAttr "p" ("class" =: "") (text "Bruno Morais")
     elAttr "p" ("class" =: "") (text "Verônica Marques")
     elAttr "p" ("class" =: "title") (text "Projeto:")
-    elAttr "p" ("class" =: "") (text "O projeto tem como objetivo simular o CRUD de Agenda e Pet, com base em um usuário que deseja organizar os horários de passeio e consulta de seus pets")    
+    elAttr "p" ("class" =: "") (text "O projeto tem como objetivo simular o CRUD de Agenda e Pet, com base em um usuário que deseja organizar os horários de serviços de seus pets")    
 
 
 sobrePage :: (DomBuilder t m, PostBuild t m) => m ()
